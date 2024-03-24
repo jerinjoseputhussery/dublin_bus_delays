@@ -11,7 +11,7 @@ create table shapes (shape_id varchar(20),shape_pt_lat varchar(20),shape_pt_lon 
 create table stop_times (trip_id varchar(20),arrival_time TIME,departure_time TIME,stop_id varchar(20),stop_sequence INT,stop_headsign varchar(50),pickup_type INT,drop_off_type INT,timepoint INT,
 	PRIMARY KEY (trip_id,stop_id));
 create table stops (stop_id varchar(20) PRIMARY KEY,stop_code INT,stop_name varchar(50),stop_desc varchar(100),stop_lat varchar(20),stop_lon varchar(20),zone_id varchar(100),stop_url varchar(100),location_type varchar(100),parent_station varchar(100));
-create table trips (route_id varchar(20),service_id INT,trip_id varchar(20) PRIMARY KEY,trip_headsign varchar(50),trip_short_name varchar(50),direction_id varchar(10),block_id varchar(50),shape_id varchar(20),
+create table trips (route_id varchar(20),service_id INT,trip_id varchar(20) PRIMARY KEY,trip_headsign varchar(50),trip_short_name varchar(50),direction_id varchar(10),block_id varchar(200),shape_id varchar(20),
 	FOREIGN KEY (route_id) REFERENCES routes(route_id),
 	FOREIGN KEY (service_id) REFERENCES calendar(service_id));
 ALTER TABLE stop_times ADD FOREIGN KEY (trip_id) REFERENCES trips(trip_id);

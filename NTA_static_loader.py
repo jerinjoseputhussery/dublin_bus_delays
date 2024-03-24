@@ -8,18 +8,30 @@ conn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database
 cursor = conn.cursor()
 
 table_name = os.path.splitext(os.path.basename(file_path))[0] 
-with open(file_path, 'r') as file:    
+with open(file_path, 'r',encoding="utf8") as file:    
     next(file)
-    lines = file.readlines()    
+    lines = file.readlines() 
+    count=0   
     for line in lines:        
-        data = line.strip().split(',')         
+
+        data = line.strip().split(',')   
+
+        #code checks for the file is stops, then it will escape the comma in stop name
+        if(len(data)!=10 and table_name=='stops'):
+            #print(data[2]+','+data[3])
+            data[2]=data[2]+','+data[3] 
+            del data[3]  
         sql_query = f"INSERT INTO {table_name} VALUES ("
         for i in data:
             sql_query+='?,'
         sql_query = sql_query.rstrip(sql_query[-1])
-        sql_query+=')'        
+        sql_query+=')' 
+        #print(count)
+        print(sql_query)       
         cursor.execute(sql_query, data)
-        print('1 Table got written')
+        count+=1
+    print(count ,' rows got written')
+    print('1 Table got written')
 
 conn.commit()
 cursor.close()
