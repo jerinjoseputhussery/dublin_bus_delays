@@ -122,6 +122,8 @@ celerybeat.pid
 # Environments
 .env
 .venv
+config.py
+static_loader_config.py
 env/
 venv/
 ENV/
