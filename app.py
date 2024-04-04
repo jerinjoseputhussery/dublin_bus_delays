@@ -9,7 +9,8 @@ def call_api_and_display_response(api_url, headers):
         if response.status_code == 200:
             # Display the API response content
             print("API Response:")
-            print(response.text)
+            # print(response.text)
+            
         else:
             # Display an error message for unsuccessful requests
             print(f"Error: {response.status_code} - {response.text}")
