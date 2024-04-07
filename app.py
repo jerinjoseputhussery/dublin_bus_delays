@@ -23,19 +23,31 @@ def call_api_and_display_response(api_url, headers):
             jsonResponse=json.loads(response.text)
             # print(response.text)
             print('Entity count: ',len(jsonResponse["entity"]))
-            count=0
+            noOfDelayEntries=0
             total_arrival_delays=0            
             routesFromDatabase = [row[0] for row in getStaticRoutes()]
-            currentRoutes=set()
+            currentRoutes=set()            
             for entities in jsonResponse["entity"]:
-                if(entities["trip_update"]["trip"]["schedule_relationship"]=='SCHEDULED'):                    
-                    count+=1
+                if(entities["trip_update"]["trip"]["schedule_relationship"]=='SCHEDULED'):
                     if(entities["trip_update"]["trip"]["route_id"] in routesFromDatabase):
-                        currentRoutes.add(entities["trip_update"]["trip"]["route_id"])
-                    # for stop_time_update in entities["trip_update"]["stop_time_update"]:
-                    #     stop_time_update["arrival"]["delay"]
-            print('SCHEDULED: ',count)
-            print('Current',len(currentRoutes),'DUBLIN BUS Routes: ',currentRoutes)
+                        currentRoutes.add(entities["trip_update"]["trip"]["route_id"])                        
+                        if("stop_time_update" in entities["trip_update"]):                            
+                            for stop_time_update in entities["trip_update"]["stop_time_update"]:
+                                # print(stop_time_update)
+                                if("arrival" in stop_time_update):
+                                    if("delay" in stop_time_update["arrival"]):                                
+                                        total_arrival_delays+=stop_time_update["arrival"]["delay"]                                        
+                                        noOfDelayEntries+=1
+                                elif("departure" in stop_time_update):
+                                    if("delay" in stop_time_update["departure"]):                                
+                                        total_arrival_delays+=stop_time_update["departure"]["delay"]                                        
+                                        noOfDelayEntries+=1
+            # print('SCHEDULED: ',count)
+            print('Current',len(currentRoutes),'DUBLIN BUS Routes: ',sorted(currentRoutes))
+            avgDelayFromAllRoutes=int(total_arrival_delays/noOfDelayEntries)
+            minutes, seconds = divmod(avgDelayFromAllRoutes, 60)
+            print(avgDelayFromAllRoutes)
+            print('Average delays from all current routes: ',minutes, ' minutes ',seconds,' seconds')
         else:
             # Display an error message for unsuccessful requests
             print(f"Error: {response.status_code} - {response.text}")
