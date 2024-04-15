@@ -124,6 +124,9 @@ celerybeat.pid
 .venv
 config.py
 static_loader_config.py
+files/
+GTFS_Realtime
+GTFS_Realtime/
 env/
 venv/
 ENV/
