@@ -17,6 +17,8 @@ create table trips (route_id varchar(20),service_id INT,trip_id varchar(20) PRIM
 ALTER TABLE stop_times ADD FOREIGN KEY (trip_id) REFERENCES trips(trip_id);
 ALTER TABLE stop_times ADD FOREIGN KEY (stop_id) REFERENCES stops(stop_id);
 
+--ROUTE MAPPING TABLE
+create table route_mapping (route_id varchar(20),route_short_name varchar(20), is_active int, primary key(route_short_name,route_id))
 
 --DYNAMIC TABLES
 Create table route_delays (entry_id int, route_id varchar(20), direction_id varchar(10), entry_timestamp timestamp, current_delay int, avg_route_delay int,
