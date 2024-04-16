@@ -126,6 +126,7 @@ config.py
 static_loader_config.py
 files/
 GTFS_Realtime
+GTFS_Realtime.zip
 GTFS_Realtime/
 env/
 venv/

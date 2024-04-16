@@ -20,11 +20,15 @@ ALTER TABLE stop_times ADD FOREIGN KEY (stop_id) REFERENCES stops(stop_id);
 --ROUTE MAPPING TABLE
 create table route_mapping (route_id varchar(20),route_short_name varchar(20), is_active int, primary key(route_short_name,route_id))
 
+
+--SEQUENCE FOR ENTRY_ID
+CREATE SEQUENCE entry_id_seq start with 1 increment by 1
+
 --DYNAMIC TABLES
-Create table route_delays (entry_id int, route_id varchar(20), direction_id varchar(10), entry_timestamp timestamp, current_delay int, avg_route_delay int,
+Create table route_delays (entry_id int, route_id varchar(20), direction_id varchar(10), entry_timestamp datetime, current_delay int, avg_route_delay int,
 PRIMARY KEY (entry_id,route_id,direction_id,entry_timestamp));
-Create table delays(entry_id int, entry_timestamp timestamp, current_delay int, avg_delay int, primary key(entry_id,entry_timestamp));
-Create table weather (entry_id int, location varchar(200), entry_timestamp timestamp,temperature_2m	FLOAT,relative_humidity_2m int,apparent_temperature	FLOAT,is_day int,precipitation int,rain int,showers int, snowfall int, weather_code int, cloud_cover int, pressure_msl FLOAT, surface_pressure FLOAT, wind_speed_10m FLOAT,wind_direction_10m int, wind_gusts_10m FLOAT, avg_temperature_2m	FLOAT, avg_relative_humidity_2m int, avg_apparent_temperature	FLOAT, avg_precipitation int, avg_rain int, avg_showers int, avg_snowfall int, avg_cloud_cover int, avg_pressure_msl FLOAT, avg_surface_pressure FLOAT, avg_wind_speed_10m FLOAT, avg_wind_direction_10m int, avg_wind_gusts_10m FLOAT, primary key(entry_id,entry_timestamp));
+Create table delays(entry_id int, entry_timestamp datetime, current_delay int, avg_delay int, primary key(entry_id,entry_timestamp));
+Create table weather (entry_id int, location varchar(200), entry_timestamp datetime,temperature_2m	FLOAT,relative_humidity_2m int,apparent_temperature	FLOAT,is_day int,precipitation int,rain int,showers int, snowfall int, weather_code int, cloud_cover int, pressure_msl FLOAT, surface_pressure FLOAT, wind_speed_10m FLOAT,wind_direction_10m int, wind_gusts_10m FLOAT, avg_temperature_2m	FLOAT, avg_relative_humidity_2m int, avg_apparent_temperature	FLOAT, avg_precipitation int, avg_rain int, avg_showers int, avg_snowfall int, avg_cloud_cover int, avg_pressure_msl FLOAT, avg_surface_pressure FLOAT, avg_wind_speed_10m FLOAT, avg_wind_direction_10m int, avg_wind_gusts_10m FLOAT, primary key(entry_id,entry_timestamp));
 create table weather_codes( code int primary key,code_description varchar(100), code_count int, avg_delay int);
 
 --INSERT QUERIES TO weather_codes table

@@ -5,6 +5,7 @@ from config import api_url,subscription_key
 from static_loader_config import database,password,server,username
 from getGTFS import download
 from static_refresh import refresh
+from pushDelays import push_to_delays
 def getStaticRoutes():
     conn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
     cursor = conn.cursor()
@@ -52,9 +53,13 @@ def call_api_and_display_response(api_url, headers):
             routeDelays = {}
             tripCounts = {}
             avgRouteDelays = {}
-            for routes in currentRoutes:
-                routeDelays[routes]=0
-                tripCounts[routes]=0
+            currentRoutesWithDirection=set()
+            for route in currentRoutes:
+                currentRoutesWithDirection.add(route+'~0')
+                currentRoutesWithDirection.add(route+'~1')
+            for route in currentRoutesWithDirection:
+                routeDelays[route]=0
+                tripCounts[route]=0
             for entities in jsonResponse["entity"]:
                 if(entities["trip_update"]["trip"]["schedule_relationship"]=='SCHEDULED' and entities["trip_update"]["trip"]["route_id"] in currentRoutes):                    
                     if("stop_time_update" in entities["trip_update"]):
@@ -71,10 +76,14 @@ def call_api_and_display_response(api_url, headers):
                                     total_trip_delay+=stop_time_update["departure"]["delay"] 
                         if(noOfTripUpdates>0):                            
                             avg_trip_delay=int(total_trip_delay/noOfTripUpdates)
-                            routeDelays[entities["trip_update"]["trip"]["route_id"]]+=avg_trip_delay
-                            tripCounts[entities["trip_update"]["trip"]["route_id"]]+=1
+                            if(entities["trip_update"]["trip"]["direction_id"]==0):
+                                routeDelays[entities["trip_update"]["trip"]["route_id"]+'~0']+=avg_trip_delay
+                                tripCounts[entities["trip_update"]["trip"]["route_id"]+'~0']+=1
+                            elif(entities["trip_update"]["trip"]["direction_id"]==1):
+                                routeDelays[entities["trip_update"]["trip"]["route_id"]+'~1']+=avg_trip_delay
+                                tripCounts[entities["trip_update"]["trip"]["route_id"]+'~1']+=1
             print('routeDelays: ',routeDelays)
-            print('tripCounts: ',tripCounts)
+            print('tripCounts: ',tripCounts)            
             for key in routeDelays:
                 if(tripCounts[key]>0):
                     avgRouteDelays[key] = int(routeDelays[key]/tripCounts[key])
@@ -83,15 +92,15 @@ def call_api_and_display_response(api_url, headers):
             avgDelayFromAllRoutes=int(total_arrival_delays/noOfDelayEntries)
             minutes, seconds = divmod(avgDelayFromAllRoutes, 60)
             print(avgDelayFromAllRoutes)
+            push_to_delays(jsonResponse["header"]["timestamp"],avgDelayFromAllRoutes,avgRouteDelays)
             print('Average delays from all current routes: ',minutes, ' minutes ',seconds,' seconds')
-            print(noOfDelayEntries)
             print(avgRouteDelays)
-            sum=0
-            for key in avgRouteDelays:
-                sum+=routeDelays[key]
-            print('Average: ',int(sum/len(avgRouteDelays)))
-            minutes, seconds = divmod(int(sum/len(avgRouteDelays)), 60)
-            print('Average delays from all current routes: ',minutes, ' minutes ',seconds,' seconds')
+            # sum=0
+            # for key in avgRouteDelays:
+            #     sum+=routeDelays[key]
+            # print('Average: ',int(sum/len(avgRouteDelays)))
+            # minutes, seconds = divmod(int(sum/len(avgRouteDelays)), 60)
+            # print('Average delays from all current routes: ',minutes, ' minutes ',seconds,' seconds')
         else:
             # Display an error message for unsuccessful requests
             print(f"Error: {response.status_code} - {response.text}")
