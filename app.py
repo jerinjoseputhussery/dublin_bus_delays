@@ -2,14 +2,14 @@ import requests
 import json
 import pyodbc
 from config import api_url,subscription_key
-from static_loader_config import database,password,server,username
+from static_loader_config import connection_string
 from getGTFS import download
 from static_refresh import refresh
 from pushDelays import push_to_delays
 import time
 
 def getStaticRoutes():
-    conn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
+    conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()
     cursor.execute('SELECT route_id,agency_id,route_short_name,route_long_name FROM [dublin_bus].[dbo].[routes] where agency_id in (select agency_id from agency where agency_name like \'%Dublin Bus%\')')
     rows = cursor.fetchall()

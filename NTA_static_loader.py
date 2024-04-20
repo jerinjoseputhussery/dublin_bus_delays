@@ -1,9 +1,9 @@
 import pyodbc
 import os
 import csv
-from static_loader_config import database,directory,password,server,username 
+from static_loader_config import directory,connection_string 
 def route_mapping():
-    conn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
+    conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()
     cursor.execute('SELECT route_id,agency_id,route_short_name,route_long_name FROM [dublin_bus].[dbo].[routes] where agency_id in (select agency_id from agency where agency_name like \'%Dublin Bus%\')')
     rows = cursor.fetchall()
@@ -39,7 +39,7 @@ def route_mapping():
     conn.close()    
     print('Route mapping completed')            
 def load():
-    conn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
+    conn = pyodbc.connect(connection_string)
     static_files=['agency.txt','calendar.txt','calendar_dates.txt','feed_info.txt','routes.txt','shapes.txt','stops.txt','trips.txt','stop_times.txt']
     cursor = conn.cursor()
     for file_path in static_files:

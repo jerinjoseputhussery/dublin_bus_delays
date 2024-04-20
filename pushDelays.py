@@ -1,7 +1,7 @@
 import pyodbc
 import json
 from datetime import datetime
-from static_loader_config import database,password,server,username 
+from static_loader_config import connection_string
 from weather import getCurrentWeather
 from config import location
 def convert_timestamp(posix_timestamp_str):
@@ -14,7 +14,7 @@ def convert_timestamp(posix_timestamp_str):
     return mssql_datetime
 
 def push_to_delays(timestamp,avgDelayFromAllRoutes,avgRouteDelays):
-    conn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
+    conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()
     cursor.execute('select NEXT VALUE FOR entry_id_seq')
     entry_id = cursor.fetchone()[0]
