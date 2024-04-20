@@ -18,11 +18,11 @@ ALTER TABLE stop_times ADD FOREIGN KEY (trip_id) REFERENCES trips(trip_id);
 ALTER TABLE stop_times ADD FOREIGN KEY (stop_id) REFERENCES stops(stop_id);
 
 --ROUTE MAPPING TABLE
-create table route_mapping (route_id varchar(20),route_short_name varchar(20), is_active int, primary key(route_short_name,route_id))
+create table route_mapping (route_id varchar(20),route_short_name varchar(20), is_active int, primary key(route_short_name,route_id));
 
 
 --SEQUENCE FOR ENTRY_ID
-CREATE SEQUENCE entry_id_seq start with 1 increment by 1
+CREATE SEQUENCE entry_id_seq start with 1 increment by 1;
 
 --DYNAMIC TABLES
 Create table route_delays (entry_id int, route_id varchar(20), direction_id varchar(10), entry_timestamp datetime, current_delay int, avg_route_delay int,

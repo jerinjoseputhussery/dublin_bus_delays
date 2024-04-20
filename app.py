@@ -6,6 +6,8 @@ from static_loader_config import database,password,server,username
 from getGTFS import download
 from static_refresh import refresh
 from pushDelays import push_to_delays
+import time
+
 def getStaticRoutes():
     conn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+password)
     cursor = conn.cursor()
@@ -107,6 +109,8 @@ def call_api_and_display_response(api_url, headers):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-
+start_time = time.time()
 headers = {'x-api-key': subscription_key }
 call_api_and_display_response(api_url, headers)
+print("--- %s seconds ---" % (time.time() - start_time))
+
