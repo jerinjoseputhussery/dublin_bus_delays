@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 import pyodbc
 from config import api_url,subscription_key
 from static_loader_config import connection_string
@@ -110,7 +111,12 @@ def call_api_and_display_response(api_url, headers):
         print(f"An error occurred: {e}")
 
 start_time = time.time()
+f = open("InProgress.txt", "w")
+f.write("InProgress")
+f.close()
 headers = {'x-api-key': subscription_key }
 call_api_and_display_response(api_url, headers)
+if os.path.exists("InProgress.txt"):
+    os.remove("InProgress.txt")
 print("--- %s seconds ---" % (time.time() - start_time))
 
