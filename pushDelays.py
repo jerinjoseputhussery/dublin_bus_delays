@@ -1,5 +1,6 @@
 import pyodbc
 import json
+import pytz
 from datetime import datetime
 from static_loader_config import connection_string
 from weather import getCurrentWeather
@@ -8,9 +9,11 @@ def convert_timestamp(posix_timestamp_str):
     # Convert string POSIX timestamp to integer
     posix_timestamp = int(posix_timestamp_str)    
     # Convert POSIX timestamp to datetime object
-    dt_object = datetime.fromtimestamp(posix_timestamp)    
+    dt_object = datetime.utcfromtimestamp(posix_timestamp)  
+    # dt_dublin = dt_object.replace(tzinfo=pytz.utc).astimezone(pytz.timezone("Europe/Dublin"))
+    dt_dublin = pytz.utc.localize(dt_object).astimezone(pytz.timezone("Europe/Dublin"))
     # Format datetime object as string in MSSQL format
-    mssql_datetime = dt_object.strftime('%Y-%m-%d %H:%M:%S')    
+    mssql_datetime = dt_dublin.strftime('%Y-%m-%d %H:%M:%S')    
     return mssql_datetime
 
 def push_to_delays(timestamp,avgDelayFromAllRoutes,avgRouteDelays):
