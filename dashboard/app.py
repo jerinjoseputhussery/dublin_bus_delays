@@ -5,18 +5,23 @@ import pandas as pd
 import pyodbc
 import datetime
 import plotly.graph_objects as go
-
-
+from charts import gauge_chart
+from methods import giveMeRoutes,giveMeRouteName
 
 app = Dash(__name__)
-
+routes_dict = giveMeRoutes()
+routes = list(routes_dict.keys())
+routes.insert(0, 'All-routes')
 
 
 # Define the layout of the app
 app.layout = html.Div(children=[
     dcc.Interval(id='refresh', interval=60000),
-    html.H1(children='Dublin Bus Delay Dashboard'),
-    dcc.Dropdown(['Today','All-time'], 'Today', id='dropdown-selection'),
+    html.H1(children='Dublin Bus Delay Dashboard'),   
+    dcc.Dropdown(routes, 'All-routes', id='route-selection',style={'width':'35%','display':'inline-block'}), 
+    dcc.Dropdown(id='direction-selection',style={'width':'35%','display':'inline-block'}), 
+    dcc.Dropdown(['Today','All-time'], 'Today', id='dropdown-selection',
+                 style={'width':'35%','display':'inline-block'}),
     dcc.Graph(id='timeline'),
     dcc.Graph(
         id='graph1',
@@ -35,54 +40,56 @@ app.layout = html.Div(children=[
     )
 
 ])
-@app.callback(Output('timeline', 'figure'),              
+@app.callback(
+    Output('direction-selection', 'options'),
+    Input('route-selection', 'value'))
+def set_direction(route_short_name):
+    # ivde all routes aanenkil ee drop down diable cheyyanam
+    route_name = giveMeRouteName(route_short_name)
+    
+    routes_dir = list(route_name.values())
+    return routes_dir
+
+@app.callback(             
               Output('graph1', 'figure'),
               Output('graph2', 'figure'), 
+              Output('timeline', 'figure'),
               Output('last_update_time', 'children'),             
-              [Input('dropdown-selection', 'value'),
+              [Input('route-selection', 'value'),
+                Input('dropdown-selection', 'value'),               
                Input('interval-component', 'n_intervals')])
 
-def update_refresh(value,n):
+def update_refresh(route_short_name,value,n):
     conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()    
     # Query the database
     
-    cursor.execute('SELECT AVG(current_delay) FROM delays')
-    avg_delay =  cursor.fetchone()[0]
-    cursor.execute('select AVG(current_delay) from delays where entry_id < (SELECT MAX(entry_id) FROM delays)')
-    prev_avg_delay =  cursor.fetchone()[0]
-    cursor.execute('SELECT MAX(current_delay) FROM delays')
-    max_delay =  cursor.fetchone()[0]
-    cursor.execute('SELECT TOP 1 * FROM delays order by entry_id desc')
-    last_row = cursor.fetchone()
-    curr_delay =  last_row[2]
-    last_fetch_time = last_row[1]
-    cursor.execute('select TOP 1 current_delay from delays where entry_id < (SELECT MAX(entry_id) FROM delays) order by entry_id desc')
-    prev_delay = cursor.fetchone()[0]
-    fig1=go.Figure(go.Indicator(
-            domain = {'x': [0, 1], 'y': [0, 1]},
-            value = avg_delay,
-            number={'suffix':" sec"},
-            mode = "gauge+number+delta",
-            title = {'text': "Average Delay"},
-            delta = {'reference': prev_avg_delay, 'increasing': {'color': "red"}, 'decreasing': {'color': "green"}},
-            gauge = {'axis': {'range': [None, max_delay]},
-                    'steps' : [
-                        {'range': [0, avg_delay-10], 'color': "lightgray"},
-                        {'range': [avg_delay-10, avg_delay+10], 'color': "gray"}],
-                    'threshold' : {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': max_delay}}))
-    fig2=go.Figure(go.Indicator(
-            domain = {'x': [0, 1], 'y': [0, 1]},
-            value = curr_delay,
-            number={'suffix':" sec"},
-            mode = "gauge+number+delta",
-            title = {'text': "Current Delay"},
-            delta = {'reference': prev_delay, 'increasing': {'color': "red"}, 'decreasing': {'color': "green"}},
-            gauge = {'axis': {'range': [None, max_delay]},
-                    'steps' : [
-                        {'range': [0, curr_delay-10], 'color': "lightgray"},
-                        {'range': [curr_delay-10, curr_delay+10], 'color': "gray"}],
-                    'threshold' : {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': max_delay}}))
+    if(route_short_name=='All-routes'):
+        cursor.execute('SELECT AVG(current_delay) FROM delays')
+        avg_delay =  cursor.fetchone()[0]
+        cursor.execute('select AVG(current_delay) from delays where entry_id < (SELECT MAX(entry_id) FROM delays)')
+        prev_avg_delay =  cursor.fetchone()[0]
+        cursor.execute('SELECT MAX(current_delay) FROM delays')
+        max_delay =  cursor.fetchone()[0]
+        cursor.execute('SELECT TOP 1 * FROM delays order by entry_id desc')
+        curr_delay = cursor.fetchone()[2]        
+        cursor.execute('select TOP 1 current_delay from delays where entry_id < (SELECT MAX(entry_id) FROM delays) order by entry_id desc')
+        prev_delay = cursor.fetchone()[0]
+    else:
+        cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
+        avg_delay =  cursor.fetchone()[0]
+        cursor.execute('select AVG(current_delay) from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=?',[routes_dict[route_short_name],routes_dict[route_short_name]])
+        prev_avg_delay =  cursor.fetchone()[0]
+        cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
+        max_delay =  cursor.fetchone()[0]
+        cursor.execute('SELECT TOP 1 current_delay FROM route_delays where route_id=? order by entry_id desc',routes_dict[route_short_name])
+        curr_delay = cursor.fetchone()[0]        
+        cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=? order by entry_id desc',[routes_dict[route_short_name],routes_dict[route_short_name]])
+        prev_delay = cursor.fetchone()[0]
+        
+    # print(routes)
+    fig1=gauge_chart('Average Delay',avg_delay,prev_avg_delay,max_delay)    
+    fig2=gauge_chart('Current Delay',curr_delay,prev_delay,max_delay)    
       
     
     if(value=='Today'):
@@ -114,6 +121,6 @@ def update_refresh(value,n):
     print(datetime.datetime.now())
     cursor.close()
     conn.close()
-    return fig0,fig1,fig2,html.P('Last updated ' +str(datetime.datetime.now()))
+    return fig1,fig2,fig0,html.P('Last updated ' +str(datetime.datetime.now()))
 if __name__ == '__main__':
     app.run(debug=True)

@@ -4,7 +4,8 @@
 import os
 from datetime import datetime
 import calendar
-
+import pyodbc
+from static_loader_config import connection_string
 # Assign directory
 directory = "GTFS_Realtime"
  
@@ -17,5 +18,15 @@ def iterateFiles():
             # Read content of file
 def dayOfWeek(dt):     
     return calendar.day_name[dt.weekday()]
-    
-print(dayOfWeek(datetime.now()))
+def connection():
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()
+    cursor.close()
+    conn.close()
+    if(conn):
+        print('Connection is available')
+    else:
+        print('Connection is not available')
+      
+# print(dayOfWeek(datetime.now()))
+connection()
