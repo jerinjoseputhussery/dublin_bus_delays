@@ -19,7 +19,7 @@ app.layout = html.Div(children=[
     dcc.Interval(id='refresh', interval=60000),
     html.H1(children='Dublin Bus Delay Dashboard'),   
     dcc.Dropdown(routes, 'All-routes', id='route-selection',style={'width':'35%','display':'inline-block'}), 
-    dcc.Dropdown(id='direction-selection',style={'width':'35%','display':'inline-block'}), 
+    dcc.Dropdown(id='direction-selection',style={'width':'35%','display':'inline-block'},disabled=True), 
     dcc.Dropdown(['Today','All-time'], 'Today', id='dropdown-selection',
                  style={'width':'35%','display':'inline-block'}),
     dcc.Graph(id='timeline'),
@@ -42,13 +42,18 @@ app.layout = html.Div(children=[
 ])
 @app.callback(
     Output('direction-selection', 'options'),
+    Output('direction-selection', 'disabled'),
+    Output('direction-selection', 'value'),
     Input('route-selection', 'value'))
 def set_direction(route_short_name):
     # ivde all routes aanenkil ee drop down diable cheyyanam
-    route_name = giveMeRouteName(route_short_name)
-    
+    disabled=False
+    if(route_short_name=='All-routes'):
+        disabled=True
+    route_name = giveMeRouteName(route_short_name)    
     routes_dir = list(route_name.values())
-    return routes_dir
+    routes_dir.insert(0, 'Both-directions')
+    return routes_dir,disabled,'Both-directions'
 
 @app.callback(             
               Output('graph1', 'figure'),
@@ -56,15 +61,18 @@ def set_direction(route_short_name):
               Output('timeline', 'figure'),
               Output('last_update_time', 'children'),             
               [Input('route-selection', 'value'),
+               Input('direction-selection', 'value'),
                 Input('dropdown-selection', 'value'),               
                Input('interval-component', 'n_intervals')])
 
-def update_refresh(route_short_name,value,n):
+def update_refresh(route_short_name,direction_title,value,n):
     conn = pyodbc.connect(connection_string)
-    cursor = conn.cursor()    
+    cursor = conn.cursor()  
+    
     # Query the database
     
-    if(route_short_name=='All-routes'):
+    
+    if(route_short_name=='All-routes'):                
         cursor.execute('SELECT AVG(current_delay) FROM delays')
         avg_delay =  cursor.fetchone()[0]
         cursor.execute('select AVG(current_delay) from delays where entry_id < (SELECT MAX(entry_id) FROM delays)')
@@ -76,16 +84,30 @@ def update_refresh(route_short_name,value,n):
         cursor.execute('select TOP 1 current_delay from delays where entry_id < (SELECT MAX(entry_id) FROM delays) order by entry_id desc')
         prev_delay = cursor.fetchone()[0]
     else:
-        cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
-        avg_delay =  cursor.fetchone()[0]
-        cursor.execute('select AVG(current_delay) from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=?',[routes_dict[route_short_name],routes_dict[route_short_name]])
-        prev_avg_delay =  cursor.fetchone()[0]
-        cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
-        max_delay =  cursor.fetchone()[0]
-        cursor.execute('SELECT TOP 1 current_delay FROM route_delays where route_id=? order by entry_id desc',routes_dict[route_short_name])
-        curr_delay = cursor.fetchone()[0]        
-        cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=? order by entry_id desc',[routes_dict[route_short_name],routes_dict[route_short_name]])
-        prev_delay = cursor.fetchone()[0]
+        print('direction_title',direction_title)
+        if(direction_title=='Both-directions' or direction_title==None):
+            cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
+            avg_delay =  cursor.fetchone()[0]
+            cursor.execute('select AVG(current_delay) from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=?',[routes_dict[route_short_name],routes_dict[route_short_name]])
+            prev_avg_delay =  cursor.fetchone()[0]
+            cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
+            max_delay =  cursor.fetchone()[0]
+            cursor.execute('SELECT TOP 1 current_delay FROM route_delays where route_id=? order by entry_id desc',routes_dict[route_short_name])
+            curr_delay = cursor.fetchone()[0]        
+            cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=? order by entry_id desc',[routes_dict[route_short_name],routes_dict[route_short_name]])
+            prev_delay = cursor.fetchone()[0]
+        else: 
+            direction = [key for key, value in giveMeRouteName(route_short_name).items() if value == direction_title]
+            cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id=? and direction_id=?',routes_dict[route_short_name],direction[0])
+            avg_delay =  cursor.fetchone()[0]
+            cursor.execute('select AVG(current_delay) from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=? and direction_id=?) and route_id=? and direction_id=?',[routes_dict[route_short_name],direction[0],routes_dict[route_short_name],direction[0]])
+            prev_avg_delay =  cursor.fetchone()[0]
+            cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id=? and direction_id=?',routes_dict[route_short_name],direction[0])
+            max_delay =  cursor.fetchone()[0]
+            cursor.execute('SELECT TOP 1 current_delay FROM route_delays where route_id=? and direction_id=? order by entry_id desc',routes_dict[route_short_name],direction[0])
+            curr_delay = cursor.fetchone()[0]        
+            cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=? and direction_id=?) and route_id=? and direction_id=? order by entry_id desc',[routes_dict[route_short_name],direction[0],routes_dict[route_short_name],direction[0]])
+            prev_delay = cursor.fetchone()[0]
         
     # print(routes)
     fig1=gauge_chart('Average Delay',avg_delay,prev_avg_delay,max_delay)    
