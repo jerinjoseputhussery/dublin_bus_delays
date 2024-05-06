@@ -1,6 +1,7 @@
 from config import connection_string
 import pyodbc
-
+import pandas as pd
+from datetime import datetime
 def giveMeRoutes():
     conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()  
@@ -40,4 +41,15 @@ def giveMeRouteName(route_short_name):
         dict['1']=row[3]  
         dict['0']=reverseRoute(row[3])
     return dict
-# print(giveMeRouteName('27'))
+def giveMeDFs(res):
+    array1 = []
+    array2 = []
+    for row in res:
+        array1.append(row[0])
+        array2.append(row[1]) 
+    df = pd.DataFrame(dict(
+        x = array1,
+        y = array2
+    )) 
+    return df
+

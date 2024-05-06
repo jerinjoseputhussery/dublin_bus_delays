@@ -5,8 +5,8 @@ import pandas as pd
 import pyodbc
 import datetime
 import plotly.graph_objects as go
-from charts import gauge_chart
-from methods import giveMeRoutes,giveMeRouteName
+from charts import gauge_chart,bar_chart,line_chart,day_in_week_chart
+from methods import giveMeRoutes,giveMeRouteName,giveMeDFs
 
 app = Dash(__name__)
 routes_dict = giveMeRoutes()
@@ -31,6 +31,8 @@ app.layout = html.Div(children=[
         id='graph2',
         style={'display':'inline-block','width': '90vh', 'height': '90vh'},        
     ),
+    dcc.Graph(id='bar-chart1'),
+    dcc.Graph(id='bar-chart2'),
     html.Div(id='last_update_time',
              style={'font-size': '10px'}),
     dcc.Interval(
@@ -59,6 +61,8 @@ def set_direction(route_short_name):
               Output('graph1', 'figure'),
               Output('graph2', 'figure'), 
               Output('timeline', 'figure'),
+              Output('bar-chart1', 'figure'),
+              Output('bar-chart2', 'figure'),
               Output('last_update_time', 'children'),             
               [Input('route-selection', 'value'),
                Input('direction-selection', 'value'),
@@ -115,34 +119,24 @@ def update_refresh(route_short_name,direction_title,value,n):
       
     
     if(value=='Today'):
-        cursor.execute('select entry_timestamp,current_delay from delays where CONVERT(date, entry_timestamp)=CONVERT(date, GETDATE()) order by entry_id')
-        today_delay =  cursor.fetchall()   
-        entry_timestamp_arr = []
-        current_delay_arr = []
-        for row in today_delay:
-            entry_timestamp_arr.append(row[0])
-            current_delay_arr.append(row[1]) 
-        df = pd.DataFrame(dict(
-            time = entry_timestamp_arr,
-            delay = current_delay_arr
-        ))  
-        fig0 = px.line(df, x='time', y='delay',title='Today\'s Delay')
+        cursor.execute('select entry_timestamp,current_delay from delays where CONVERT(date, entry_timestamp)=CONVERT(date, GETDATE()) order by entry_id')        
+        fig0=line_chart('Today\'s Delay',giveMeDFs(cursor.fetchall()),'x','y','Time/Date','Delay')
     else:
-        cursor.execute('select CONVERT(date, entry_timestamp),AVG(current_delay) from delays group by CONVERT(date, entry_timestamp)')
-        today_delay =  cursor.fetchall()   
-        entry_timestamp_arr = []
-        current_delay_arr = []
-        for row in today_delay:
-            entry_timestamp_arr.append(row[0])
-            current_delay_arr.append(row[1]) 
-        df = pd.DataFrame(dict(
-            dates = entry_timestamp_arr,
-            delay = current_delay_arr
-        ))  
-        fig0 = px.line(df, x='dates', y='delay',title='All-time Delay')
+        cursor.execute('select CONVERT(date, entry_timestamp),AVG(current_delay) from delays group by CONVERT(date, entry_timestamp)')       
+        fig0=line_chart('Today\'s Delay',giveMeDFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+    cursor.execute('SELECT wc.code_description, AVG(d.current_delay) as avg_delay FROM weather w INNER JOIN delays d ON w.entry_id = d.entry_id INNER JOIN weather_codes wc ON w.weather_code = wc.code GROUP BY w.weather_code, wc.code_description;')
+    
+    bar1=bar_chart('Delay with Weather conditions',giveMeDFs(cursor.fetchall()),'x','y','Weather conditions','Average Delays',)
+    cursor.execute('SELECT DATENAME(WEEKDAY, entry_timestamp) AS day_of_week, AVG(current_delay) AS avg_delay FROM delays GROUP BY DATENAME(WEEKDAY, entry_timestamp) ORDER BY CASE WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Sunday\' THEN 7 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Monday\' THEN 1 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Tuesday\' THEN 2 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Wednesday\' THEN 3 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Thursday\' THEN 4 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Friday\' THEN 5 ELSE 6 END;')
+    # bar2=bar_chart('Delay with Day of Weeks',giveMeDFs(cursor.fetchall()),'x','y','Day of week','Average Delay')
+    
+    df = giveMeDFs(cursor.fetchall())  
+    colors = ['lightslategray',] * 7
+    colors[df['y'].idxmax()] = 'crimson'  
+    bar2=day_in_week_chart('Delay with Day of Weeks',df,'x','y','Day of week','Average Delay',colors)
     print(datetime.datetime.now())
     cursor.close()
     conn.close()
-    return fig1,fig2,fig0,html.P('Last updated ' +str(datetime.datetime.now()))
+    return fig1,fig2,fig0,bar1,bar2,html.P('Last updated ' +str(datetime.datetime.now()))
 if __name__ == '__main__':
     app.run(debug=True)
