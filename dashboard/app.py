@@ -6,7 +6,7 @@ import pyodbc
 import datetime
 import plotly.graph_objects as go
 from charts import gauge_chart,bar_chart,line_chart,day_in_week_chart
-from methods import giveMeRoutes,giveMeRouteName,giveMeDFs
+from methods import giveMeRoutes,giveMeRouteName,giveMeDFs,giveMe4DFs
 
 app = Dash(__name__)
 routes_dict = giveMeRoutes()
@@ -119,11 +119,11 @@ def update_refresh(route_short_name,direction_title,value,n):
       
     
     if(value=='Today'):
-        cursor.execute('select entry_timestamp,current_delay from delays where CONVERT(date, entry_timestamp)=CONVERT(date, GETDATE()) order by entry_id')        
-        fig0=line_chart('Today\'s Delay',giveMeDFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+        cursor.execute('select d.entry_timestamp,d.current_delay,w.temperature_2m,w.wind_speed_10m from delays d INNER JOIN weather w on w.entry_id=d.entry_id where CONVERT(date, d.entry_timestamp)=CONVERT(date, GETDATE()) order by d.entry_id')        
+        fig0=line_chart('Today\'s Delay',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
     else:
-        cursor.execute('select CONVERT(date, entry_timestamp),AVG(current_delay) from delays group by CONVERT(date, entry_timestamp)')       
-        fig0=line_chart('Today\'s Delay',giveMeDFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+        cursor.execute('select CONVERT(date, d.entry_timestamp),AVG(d.current_delay),AVG(w.temperature_2m),AVG(w.wind_speed_10m) from delays d INNER JOIN weather w on w.entry_id=d.entry_id group by CONVERT(date, d.entry_timestamp)  order by CONVERT(date, d.entry_timestamp)')       
+        fig0=line_chart('Today\'s Delay',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
     cursor.execute('SELECT wc.code_description, AVG(d.current_delay) as avg_delay FROM weather w INNER JOIN delays d ON w.entry_id = d.entry_id INNER JOIN weather_codes wc ON w.weather_code = wc.code GROUP BY w.weather_code, wc.code_description;')
     
     bar1=bar_chart('Delay with Weather conditions',giveMeDFs(cursor.fetchall()),'x','y','Weather conditions','Average Delays',)

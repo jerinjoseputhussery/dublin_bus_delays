@@ -1,5 +1,6 @@
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 
 def gauge_chart(title,main_value,ref_value,max_value):
     return go.Figure(go.Indicator(
@@ -31,10 +32,27 @@ def day_in_week_chart(title_of_chart,df,x_name,y_name,x_display_name,y_display_n
         title_text=title_of_chart
     )
     return fig
+# def line_chart(title_of_chart,df,x_name,y_name,x_display_name,y_display_name):
+#     fig =  px.line(df, x=x_name, y=y_name, title=title_of_chart)
+#     fig.update_layout(
+#         xaxis_title=x_display_name,
+#         yaxis_title=y_display_name
+#     )
+#     return fig
 def line_chart(title_of_chart,df,x_name,y_name,x_display_name,y_display_name):
-    fig =  px.line(df, x=x_name, y=y_name, title=title_of_chart)
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(go.Scatter(x=df.x, y=df.y,
+                    mode='lines',
+                    name='Delay'))
+    fig.add_trace(go.Scatter(x=df.x, y=df.z,
+                    mode='lines',
+                    name='Temp'),secondary_y=True)
+    fig.add_trace(go.Scatter(x=df.x, y=df.a,
+                    mode='lines',
+                    name='Wind speed'),secondary_y=True)
     fig.update_layout(
         xaxis_title=x_display_name,
-        yaxis_title=y_display_name
+        yaxis_title=y_display_name,
+        title=title_of_chart
     )
     return fig

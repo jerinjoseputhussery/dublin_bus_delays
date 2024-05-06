@@ -52,4 +52,21 @@ def giveMeDFs(res):
         y = array2
     )) 
     return df
+def giveMe4DFs(res):
+    array1 = []
+    array2 = []
+    array3 = []
+    array4 = []
+    for row in res:
+        array1.append(row[0])
+        array2.append(row[1]) 
+        array3.append(row[2])
+        array4.append(row[3]) 
+    df = pd.DataFrame(dict(
+        x = array1,
+        y = array2,
+        z = array3,
+        a = array4
+    )) 
+    return df
 
