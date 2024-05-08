@@ -3,11 +3,12 @@ import plotly.express as px
 from config import connection_string
 import pandas as pd
 import pyodbc
+import dash_bootstrap_components as dbc
 import datetime
 import plotly.graph_objects as go
 from charts import gauge_chart,bar_chart,line_chart,day_in_week_chart
 from methods import giveMeRoutes,giveMeRouteName,giveMeDFs,giveMe4DFs
-
+from elements import radio
 
 external_stylesheets = [
     {
@@ -18,7 +19,7 @@ external_stylesheets = [
         "rel": "stylesheet",
     },
 ]
-app = Dash(__name__,external_stylesheets=external_stylesheets)
+app = Dash(__name__,external_stylesheets=[dbc.themes.BOOTSTRAP,external_stylesheets])
 app.title = "Dublin Bus Delay Dashboard"
 
 routes_dict = giveMeRoutes()
@@ -27,14 +28,24 @@ routes.insert(0, 'All-routes')
 
 
 # Define the layout of the app
-app.layout = html.Div(children=[
+app.layout = dcc.Loading(
+        id="loading",
+        type="default",  # or 'cube', 'circle', 'dot', 'circle-dot'
+        fullscreen=True,
+        color='#222222',
+        children=[
+    html.Div(children=[
     # dcc.Interval(id='refresh', interval=60000),
     html.Div(children=[
-    html.H1(children='Dublin Bus Delay Dashboard',className="header-title"),],className="header"),   
-    dcc.Dropdown(routes, 'All-routes', id='route-selection',style={'width':'35%','display':'inline-block'}), 
-    dcc.Dropdown(id='direction-selection',style={'width':'35%','display':'inline-block'},disabled=True), 
-    dcc.Dropdown(['Today','All-time'], 'Today', id='dropdown-selection',
-                 style={'width':'35%','display':'inline-block'}),
+    html.H1(children='Dublin Bus Delay Dashboard',className="header-title"),],className="header"),  
+    html.Div(className='dropdown-container',children=[
+        dcc.Dropdown(routes, 'All-routes', id='route-selection',className='dropdown',placeholder='Select route',clearable=False), 
+        dcc.Dropdown(id='direction-selection',className='dropdown',disabled=True,clearable=False),         
+    ]), 
+    # dcc.RadioItems(['Today','All-time'], 'Today', id='dropdown-selection',className='radio-inputs'),
+    radio('dropdown-selection'),
+   
+    
     dcc.Graph(id='timeline'),
     dcc.Graph(
         id='graph1',
@@ -55,7 +66,7 @@ app.layout = html.Div(children=[
             n_intervals=0
     )    
 
-])
+])])
 @app.callback(
     Output('direction-selection', 'options'),
     Output('direction-selection', 'disabled'),
@@ -84,7 +95,7 @@ def set_direction(route_short_name):
                 Input('dropdown-selection', 'value'),               
                Input('interval-component', 'n_intervals')])
 
-def update_refresh(route_short_name,direction_title,value,n):
+def update_refresh(route_short_name,direction_title,value,n):    
     conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()  
     
@@ -137,7 +148,7 @@ def update_refresh(route_short_name,direction_title,value,n):
         fig0=line_chart('Today\'s Delay',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
     else:
         cursor.execute('select CONVERT(date, d.entry_timestamp),AVG(d.current_delay),AVG(w.temperature_2m),AVG(w.wind_speed_10m) from delays d INNER JOIN weather w on w.entry_id=d.entry_id group by CONVERT(date, d.entry_timestamp)  order by CONVERT(date, d.entry_timestamp)')       
-        fig0=line_chart('Today\'s Delay',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+        fig0=line_chart('All Time Delay',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
     cursor.execute('SELECT wc.code_description, AVG(d.current_delay) as avg_delay FROM weather w INNER JOIN delays d ON w.entry_id = d.entry_id INNER JOIN weather_codes wc ON w.weather_code = wc.code GROUP BY w.weather_code, wc.code_description;')
     
     bar1=bar_chart('Delay with Weather conditions',giveMeDFs(cursor.fetchall()),'x','y','Weather conditions','Average Delays',)
@@ -156,6 +167,15 @@ def update_refresh(route_short_name,direction_title,value,n):
     pie1.update_layout(
         title='Dublin Weather'
     )   
+    
+    # #map
+    # cursor.execute('select CONVERT(FLOAT,shape_pt_lat),CONVERT(FLOAT,shape_pt_lon) from shapes where shape_id in (select max(shape_id) from trips where route_id in (select route_id from route_mapping where is_active=1 and route_short_name=?)) order by shape_pt_sequence','27')
+    # df = giveMeDFs(cursor.fetchall())
+    # map0 = go.Figure(go.Scattermapbox(
+    # mode = "markers+lines",
+    # lon = df['x'],
+    # lat = df['y'],
+    # marker = {'size': 10}))
     print(datetime.datetime.now())
     cursor.close()
     conn.close()
