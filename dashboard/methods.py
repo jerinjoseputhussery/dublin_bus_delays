@@ -11,6 +11,15 @@ def giveMeRoutes():
     for row in routes:
         dict[row[1]]=row[0]
     return dict
+def giveAllRouteIds(route_short_name):
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()  
+    cursor.execute('select route_id from route_mapping where route_short_name=?',route_short_name)
+    routes = cursor.fetchall() 
+    route_ids =[]
+    for row in routes:
+        route_ids.append(row[0])
+    return tuple(route_ids)
 def reverseRoute(route_title):
     route_title_parts = route_title.split('-')
     reversed_title_parts = list(reversed(route_title_parts))
@@ -70,3 +79,4 @@ def giveMe4DFs(res):
     )) 
     return df
 
+# print(giveAllRouteIds('27'))

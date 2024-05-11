@@ -7,7 +7,7 @@ import dash_bootstrap_components as dbc
 import datetime
 import plotly.graph_objects as go
 from charts import gauge_chart,bar_chart,line_chart,day_in_week_chart
-from methods import giveMeRoutes,giveMeRouteName,giveMeDFs,giveMe4DFs
+from methods import giveMeRoutes,giveMeRouteName,giveMeDFs,giveMe4DFs,giveAllRouteIds
 from elements import radio
 
 external_stylesheets = [
@@ -105,7 +105,8 @@ def update_refresh(route_short_name,direction_title,value,n):
     if(route_short_name=='All-routes'):                
         cursor.execute('SELECT AVG(current_delay) FROM delays')
         avg_delay =  cursor.fetchone()[0]
-        cursor.execute('select AVG(current_delay) from delays where entry_id < (SELECT MAX(entry_id) FROM delays)')
+        # cursor.execute('select AVG(current_delay) from delays where entry_id < (SELECT MAX(entry_id) FROM delays)')
+        cursor.execute(' select AVG(current_delay) from delays where CONVERT(date, entry_timestamp)<>CONVERT(date, GETDATE())')
         prev_avg_delay =  cursor.fetchone()[0]
         cursor.execute('SELECT MAX(current_delay) FROM delays')
         max_delay =  cursor.fetchone()[0]
@@ -115,27 +116,30 @@ def update_refresh(route_short_name,direction_title,value,n):
         prev_delay = cursor.fetchone()[0]
     else:
         if(direction_title=='Both-directions' or direction_title==None):
-            cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
+            cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id in {}'.format(giveAllRouteIds(route_short_name)))
             avg_delay =  cursor.fetchone()[0]
-            cursor.execute('select AVG(current_delay) from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=?',[routes_dict[route_short_name],routes_dict[route_short_name]])
+            cursor.execute('select AVG(current_delay) from route_delays where CONVERT(date, entry_timestamp)<>CONVERT(date, GETDATE()) and route_id in {}'.format(giveAllRouteIds(route_short_name)))
             prev_avg_delay =  cursor.fetchone()[0]
-            cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id=?',routes_dict[route_short_name])
+            cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id in {}'.format(giveAllRouteIds(route_short_name)))
             max_delay =  cursor.fetchone()[0]
             cursor.execute('SELECT TOP 1 current_delay FROM route_delays where route_id=? order by entry_id desc',routes_dict[route_short_name])
             curr_delay = cursor.fetchone()[0]        
-            cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=?) and route_id=? order by entry_id desc',[routes_dict[route_short_name],routes_dict[route_short_name]])
+            cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id in {}) and route_id in {} order by entry_id desc'
+                           .format(giveAllRouteIds(route_short_name),giveAllRouteIds(route_short_name)))
             prev_delay = cursor.fetchone()[0]
         else: 
             direction = [key for key, value in giveMeRouteName(route_short_name).items() if value == direction_title]
-            cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id=? and direction_id=?',routes_dict[route_short_name],direction[0])
+            cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id in {} and direction_id=?'.format(giveAllRouteIds(route_short_name)),direction[0])
             avg_delay =  cursor.fetchone()[0]
-            cursor.execute('select AVG(current_delay) from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=? and direction_id=?) and route_id=? and direction_id=?',[routes_dict[route_short_name],direction[0],routes_dict[route_short_name],direction[0]])
+            cursor.execute('select AVG(current_delay) from route_delays where CONVERT(date, entry_timestamp)<>CONVERT(date, GETDATE()) and route_id in {} and direction_id=?'
+                           .format(giveAllRouteIds(route_short_name)),direction[0])
             prev_avg_delay =  cursor.fetchone()[0]
-            cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id=? and direction_id=?',routes_dict[route_short_name],direction[0])
+            cursor.execute('SELECT MAX(current_delay) FROM route_delays where route_id in {} and direction_id=?'.format(giveAllRouteIds(route_short_name)),direction[0])
             max_delay =  cursor.fetchone()[0]
             cursor.execute('SELECT TOP 1 current_delay FROM route_delays where route_id=? and direction_id=? order by entry_id desc',routes_dict[route_short_name],direction[0])
             curr_delay = cursor.fetchone()[0]        
-            cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id=? and direction_id=?) and route_id=? and direction_id=? order by entry_id desc',[routes_dict[route_short_name],direction[0],routes_dict[route_short_name],direction[0]])
+            cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id in {} and direction_id=?) and route_id in {} and direction_id=? order by entry_id desc'
+                           .format(giveAllRouteIds(route_short_name),giveAllRouteIds(route_short_name)),direction[0],direction[0])
             prev_delay = cursor.fetchone()[0]
         
     # print(routes)
