@@ -20,6 +20,12 @@ def giveAllRouteIds(route_short_name):
     for row in routes:
         route_ids.append(row[0])
     return tuple(route_ids)
+def giveRoute_short_name(route_id):
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()  
+    cursor.execute('select route_short_name from route_mapping where route_id=?',route_id)
+    routes = cursor.fetchone()     
+    return routes[0]
 def reverseRoute(route_title):
     route_title_parts = route_title.split('-')
     reversed_title_parts = list(reversed(route_title_parts))
@@ -78,5 +84,24 @@ def giveMe4DFs(res):
         a = array4
     )) 
     return df
-
-# print(giveAllRouteIds('27'))
+def top10routes(todayOrAllTime):
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()  
+    if(todayOrAllTime=='Today'):
+        cursor.execute('select TOP 10 route_id,AVG(current_delay) as avg_delay  from route_delays where CONVERT(date, entry_timestamp)=CONVERT(date, GETDATE()) group by route_id order by avg_delay desc')
+    else:
+        cursor.execute('select TOP 10 route_id,AVG(current_delay) as avg_delay  from route_delays group by route_id order by avg_delay desc')
+    routes = cursor.fetchall() 
+    dict ={}
+    for row in routes:
+        if(giveRoute_short_name(row[0]) in dict):
+            if(dict[giveRoute_short_name(row[0])]>row[1]):            
+                continue
+        dict[giveRoute_short_name(row[0])]=row[1]
+    list_to_return = []
+    i=0
+    for key in dict:
+        i=i+1
+        list_to_return.append({'SlNo':i,'Route':key,'Route Name':giveMeRouteName(key)['1'],'Average Delays':dict[key]})
+    return list_to_return
+# print(top10routes('Today'))

@@ -62,3 +62,11 @@ body {
     margin-left: 10px;
     width: 360px;
 }
+.gauges{
+    display: flex;
+}
+.gauge{
+   
+    width: 33%;
+    height: 33%;
+}

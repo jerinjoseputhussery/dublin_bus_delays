@@ -1,5 +1,5 @@
 
-# dublin_bus_delays
+# Dublin Bus Delay Dashboard
 A real-time delay dashboard created in Python Dash that displays various Dublin Bus delay insights and weather insights. The idea is to analyze from the dashboard whether there is any correlation between the Dublin weather data and Dublin Bus delays.
 
 ## Github Link

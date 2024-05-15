@@ -4,11 +4,12 @@ from config import connection_string
 import pandas as pd
 import pyodbc
 import dash_bootstrap_components as dbc
-import datetime
+import datetime,pytz
 import plotly.graph_objects as go
 from charts import gauge_chart,bar_chart,line_chart,day_in_week_chart
-from methods import giveMeRoutes,giveMeRouteName,giveMeDFs,giveMe4DFs,giveAllRouteIds
+from methods import giveMeRoutes,giveMeRouteName,giveMeDFs,giveMe4DFs,giveAllRouteIds,top10routes
 from elements import radio
+from dash import dash_table
 
 external_stylesheets = [
     {
@@ -47,14 +48,22 @@ app.layout = dcc.Loading(
    
     
     dcc.Graph(id='timeline'),
-    dcc.Graph(
-        id='graph1',
-        style={'display':'inline-block','width': '90vh', 'height': '90vh'},        
-    ),
-    dcc.Graph(
-        id='graph2',
-        style={'display':'inline-block','width': '90vh', 'height': '90vh'},        
-    ),
+    html.Div(className='gauges',children=[
+        dcc.Graph(
+            id='graph1',
+            className='gauge'
+                   
+        ),
+        dcc.Graph(
+            id='graph2',
+            className='gauge'
+            
+        ),
+        dash_table.DataTable(
+            id='table-graph',
+        ),
+    ]),
+    
     dcc.Graph(id='bar-chart1'),
     dcc.Graph(id='bar-chart2'),
     dcc.Graph(id='pie-chart1'),
@@ -84,7 +93,8 @@ def set_direction(route_short_name):
 
 @app.callback(       
               Output('graph1', 'figure'),
-              Output('graph2', 'figure'), 
+              Output('graph2', 'figure'),
+              Output('table-graph', 'data'), 
               Output('timeline', 'figure'),
               Output('bar-chart1', 'figure'),
               Output('bar-chart2', 'figure'),
@@ -100,7 +110,12 @@ def update_refresh(route_short_name,direction_title,value,n):
     cursor = conn.cursor()  
     
     # Query the database
-    
+    if(value=='Today'):
+        table_data = top10routes('Today')
+    else:
+        table_data = top10routes('All-time')
+
+
     
     if(route_short_name=='All-routes'):                
         cursor.execute('SELECT AVG(current_delay) FROM delays')
@@ -114,6 +129,16 @@ def update_refresh(route_short_name,direction_title,value,n):
         curr_delay = cursor.fetchone()[2]        
         cursor.execute('select TOP 1 current_delay from delays where entry_id < (SELECT MAX(entry_id) FROM delays) order by entry_id desc')
         prev_delay = cursor.fetchone()[0]
+        fig1=gauge_chart('Average Delay from All-routes',avg_delay,prev_avg_delay,max_delay)    
+        fig2=gauge_chart('Current Delay in All-routes',curr_delay,prev_delay,max_delay)    
+        #Line grpah for all routes
+        if(value=='Today'):
+            cursor.execute('select d.entry_timestamp,d.current_delay,w.temperature_2m,w.wind_speed_10m from delays d INNER JOIN weather w on w.entry_id=d.entry_id where CONVERT(date, d.entry_timestamp)=CONVERT(date, GETDATE()) order by d.entry_id')        
+            fig0=line_chart('Today\'s Delay from all routes',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+        else:
+            cursor.execute('select CONVERT(date, d.entry_timestamp),AVG(d.current_delay),AVG(w.temperature_2m),AVG(w.wind_speed_10m) from delays d INNER JOIN weather w on w.entry_id=d.entry_id group by CONVERT(date, d.entry_timestamp)  order by CONVERT(date, d.entry_timestamp)')       
+            fig0=line_chart('All Time Delay from all routes',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+
     else:
         if(direction_title=='Both-directions' or direction_title==None):
             cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id in {}'.format(giveAllRouteIds(route_short_name)))
@@ -127,6 +152,18 @@ def update_refresh(route_short_name,direction_title,value,n):
             cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id in {}) and route_id in {} order by entry_id desc'
                            .format(giveAllRouteIds(route_short_name),giveAllRouteIds(route_short_name)))
             prev_delay = cursor.fetchone()[0]
+            fig1=gauge_chart('All-time Average Delay from '+route_short_name,avg_delay,prev_avg_delay,max_delay)    
+            fig2=gauge_chart('Current Delay in '+ route_short_name,curr_delay,prev_delay,max_delay)    
+            #Line graph for a route
+            if(value=='Today'):
+                cursor.execute('select d.entry_timestamp,d.current_delay,w.temperature_2m,w.wind_speed_10m from route_delays d INNER JOIN weather w on w.entry_id=d.entry_id where CONVERT(date, d.entry_timestamp)=CONVERT(date, GETDATE()) AND d.route_id=? order by d.entry_id',routes_dict[route_short_name])        
+                fig0=line_chart('Today\'s Delay in '+route_short_name,giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+
+            else:
+                cursor.execute('select CONVERT(date, d.entry_timestamp),AVG(d.current_delay),AVG(w.temperature_2m),AVG(w.wind_speed_10m) from route_delays d INNER JOIN weather w on w.entry_id=d.entry_id '+
+                              'where route_id in (select route_id from route_mapping where route_short_name=?) group by CONVERT(date, d.entry_timestamp)  order by CONVERT(date, d.entry_timestamp)',route_short_name)       
+                fig0=line_chart('All Time Delay in '+route_short_name,giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+
         else: 
             direction = [key for key, value in giveMeRouteName(route_short_name).items() if value == direction_title]
             cursor.execute('SELECT AVG(current_delay) FROM route_delays where route_id in {} and direction_id=?'.format(giveAllRouteIds(route_short_name)),direction[0])
@@ -141,20 +178,25 @@ def update_refresh(route_short_name,direction_title,value,n):
             cursor.execute('select TOP 1 current_delay from route_delays where entry_id < (SELECT MAX(entry_id) FROM route_delays where route_id in {} and direction_id=?) and route_id in {} and direction_id=? order by entry_id desc'
                            .format(giveAllRouteIds(route_short_name),giveAllRouteIds(route_short_name)),direction[0],direction[0])
             prev_delay = cursor.fetchone()[0]
-        
+            fig1=gauge_chart('All-time Average Delay from '+route_short_name,avg_delay,prev_avg_delay,max_delay)    
+            fig2=gauge_chart('Current Delay from '+route_short_name,curr_delay,prev_delay,max_delay)    
+            #Line graph for a route with direction
+            if(value=='Today'):
+                cursor.execute('select d.entry_timestamp,d.current_delay,w.temperature_2m,w.wind_speed_10m from route_delays d INNER JOIN weather w on w.entry_id=d.entry_id '
+                               +'where CONVERT(date, d.entry_timestamp)=CONVERT(date, GETDATE()) AND route_id=? AND direction_id=? order by d.entry_id',routes_dict[route_short_name],direction[0])        
+                fig0=line_chart('Today\'s Delay from '+route_short_name+' in '+direction_title,giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+
+            else:
+                cursor.execute('select CONVERT(date, d.entry_timestamp),AVG(d.current_delay),AVG(w.temperature_2m),AVG(w.wind_speed_10m) from route_delays d INNER JOIN weather w on w.entry_id=d.entry_id '+
+                              'where route_id in (select route_id from route_mapping where route_short_name=?) AND direction_id=? group by CONVERT(date, d.entry_timestamp)  order by CONVERT(date, d.entry_timestamp)',route_short_name,direction[0])       
+                fig0=line_chart('All Time Delay from'+route_short_name+' in '+direction_title,giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
+
     # print(routes)
-    fig1=gauge_chart('Average Delay',avg_delay,prev_avg_delay,max_delay)    
-    fig2=gauge_chart('Current Delay',curr_delay,prev_delay,max_delay)    
+    
       
     
-    if(value=='Today'):
-        cursor.execute('select d.entry_timestamp,d.current_delay,w.temperature_2m,w.wind_speed_10m from delays d INNER JOIN weather w on w.entry_id=d.entry_id where CONVERT(date, d.entry_timestamp)=CONVERT(date, GETDATE()) order by d.entry_id')        
-        fig0=line_chart('Today\'s Delay',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
-    else:
-        cursor.execute('select CONVERT(date, d.entry_timestamp),AVG(d.current_delay),AVG(w.temperature_2m),AVG(w.wind_speed_10m) from delays d INNER JOIN weather w on w.entry_id=d.entry_id group by CONVERT(date, d.entry_timestamp)  order by CONVERT(date, d.entry_timestamp)')       
-        fig0=line_chart('All Time Delay',giveMe4DFs(cursor.fetchall()),'x','y','Time/Date','Delay')
     cursor.execute('SELECT wc.code_description, AVG(d.current_delay) as avg_delay FROM weather w INNER JOIN delays d ON w.entry_id = d.entry_id INNER JOIN weather_codes wc ON w.weather_code = wc.code GROUP BY w.weather_code, wc.code_description;')
-    
+
     bar1=bar_chart('Delay with Weather conditions',giveMeDFs(cursor.fetchall()),'x','y','Weather conditions','Average Delays',)
     cursor.execute('SELECT DATENAME(WEEKDAY, entry_timestamp) AS day_of_week, AVG(current_delay) AS avg_delay FROM delays GROUP BY DATENAME(WEEKDAY, entry_timestamp) ORDER BY CASE WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Sunday\' THEN 7 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Monday\' THEN 1 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Tuesday\' THEN 2 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Wednesday\' THEN 3 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Thursday\' THEN 4 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Friday\' THEN 5 ELSE 6 END;')
     # bar2=bar_chart('Delay with Day of Weeks',giveMeDFs(cursor.fetchall()),'x','y','Day of week','Average Delay')
@@ -183,6 +225,6 @@ def update_refresh(route_short_name,direction_title,value,n):
     print(datetime.datetime.now())
     cursor.close()
     conn.close()
-    return fig1,fig2,fig0,bar1,bar2,pie1,html.P('Last updated ' +str(datetime.datetime.now()))
+    return fig1,fig2,table_data,fig0,bar1,bar2,pie1,html.P('Last updated ' +str(datetime.datetime.now(pytz.timezone("Europe/Dublin"))))
 if __name__ == '__main__':
     app.run(debug=True)
