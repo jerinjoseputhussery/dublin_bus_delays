@@ -59,9 +59,14 @@ app.layout = dcc.Loading(
             className='gauge'
             
         ),
-        dash_table.DataTable(
-            id='table-graph',
-        ),
+        html.Div(className='table-chart',children=[
+            html.H4(children='Top delayed routes'),
+            dash_table.DataTable(
+                id='table-graph',  
+                style_cell={'textAlign': 'left','font-family':'Helvetica'},
+            ),            
+        ])
+        
     ]),
     
     dcc.Graph(id='bar-chart1'),
@@ -112,8 +117,10 @@ def update_refresh(route_short_name,direction_title,value,n):
     # Query the database
     if(value=='Today'):
         table_data = top10routes('Today')
+        # table_title = 'Top 10 delayed routes Today'
     else:
         table_data = top10routes('All-time')
+        # table_title = 'Top 10 delayed routesAll-time'
 
 
     
@@ -196,8 +203,11 @@ def update_refresh(route_short_name,direction_title,value,n):
       
     
     cursor.execute('SELECT wc.code_description, AVG(d.current_delay) as avg_delay FROM weather w INNER JOIN delays d ON w.entry_id = d.entry_id INNER JOIN weather_codes wc ON w.weather_code = wc.code GROUP BY w.weather_code, wc.code_description;')
-
-    bar1=bar_chart('Delay with Weather conditions',giveMeDFs(cursor.fetchall()),'x','y','Weather conditions','Average Delays',)
+    df = giveMeDFs(cursor.fetchall())
+    colors = ['skyblue',] * df.shape[0]
+    colors[df['y'].idxmax()] = 'crimson'  
+    bar1=day_in_week_chart('Delay with Weather conditions',df,'x','y','Weather conditions','Average Delays',colors)
+    
     cursor.execute('SELECT DATENAME(WEEKDAY, entry_timestamp) AS day_of_week, AVG(current_delay) AS avg_delay FROM delays GROUP BY DATENAME(WEEKDAY, entry_timestamp) ORDER BY CASE WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Sunday\' THEN 7 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Monday\' THEN 1 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Tuesday\' THEN 2 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Wednesday\' THEN 3 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Thursday\' THEN 4 WHEN DATENAME(WEEKDAY, entry_timestamp) = \'Friday\' THEN 5 ELSE 6 END;')
     # bar2=bar_chart('Delay with Day of Weeks',giveMeDFs(cursor.fetchall()),'x','y','Day of week','Average Delay')
     
