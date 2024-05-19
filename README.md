@@ -24,3 +24,12 @@ Once this is done, open a browser and visit following URL:
     http://127.0.0.1:8050/
 
 
+
+## Deployment Link
+
+The extraction services are deployed on Azure virtual machine and the SQL Server database is set up on the same machine.
+
+
+The dashboard is deployed on AWS EC2. Follow the deployment  
+[link](https://engaged-magnetic-tarpon.ngrok-free.app/) to access the dublin bus delay dashboard.
+
