@@ -6,7 +6,24 @@ A real-time delay dashboard created in Python Dash that displays various Dublin 
 The repository is getting updated throughout the development by the developer.
 
 [dublin_bus_delays](https://github.com/jerinjoseputhussery/dublin_bus_delays)
-## How to execute
+## How to setup
+
+Before setting up, make sure you have all the below prerequisite are in place:
+###### • Python 3.11 or greater
+###### • Connectivity to an SQL Server 2022
+\
+Once cloned the repo, make sure to install all the requirements from dashboard/requirements.txt
+
+Next, create below three configuration files and configure them based on the example files
+
+    config.py
+    static_loader_config.py
+    dashboard/config.py
+
+
+
+
+## How to execute locally
 
 There are two different module to be executed to run this project.
 
