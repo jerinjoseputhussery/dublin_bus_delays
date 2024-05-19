@@ -21,6 +21,10 @@ Next, create below three configuration files and configure them based on the exa
     dashboard/config.py
 
 
+Execute the below SQL script in the SQL Server database to create the database and tables. 
+
+    create_GTFS_static.sql
+
 
 
 ## How to execute locally
