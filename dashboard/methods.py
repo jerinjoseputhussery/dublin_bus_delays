@@ -2,6 +2,7 @@ from config import connection_string
 import pyodbc
 import pandas as pd
 from datetime import datetime
+import json
 def giveMeRoutes():
     conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()  
@@ -105,3 +106,28 @@ def top10routes(todayOrAllTime):
         list_to_return.append({'SlNo':i,'Route':key,'Route Name':giveMeRouteName(key)['1'],'Average Delays':dict[key]})
     return list_to_return
 # print(top10routes('Today'))
+def getColors4Times(df):
+    colors = ['rgb(166,216,84)',] * df.shape[0]
+    colors[df['y'].idxmax()] = 'crimson'  
+    return colors
+def getColors4Weather(df):
+    colors = ['skyblue',] * df.shape[0]
+    colors[df['y'].idxmax()] = 'crimson'  
+    return colors
+def getColors4Day(df):
+    colors = ['lightslategray',] * 7
+    colors[df['y'].idxmax()] = 'crimson'  
+    return colors
+def getCurrentWeather():
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()  
+    cursor.execute('select top 1 w.weather_code,wc.code_description,w.is_day,w.temperature_2m,w.apparent_temperature,w.wind_speed_10m from weather w INNER JOIN weather_codes wc ON w.weather_code=wc.code order by w.entry_id desc')
+    return cursor.fetchone()
+def getVectorSrc(latest_weather):    
+    desc_file = open('assets/descriptions.json')
+    descriptions = json.load(desc_file)
+    if(latest_weather[2]==1):
+        return descriptions[str(latest_weather[0])]['day']['image']
+    else:
+        return descriptions[str(latest_weather[0])]['night']['image']
+
